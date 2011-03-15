@@ -5,12 +5,12 @@ There are a lot of good songs from a rhythm online game [Krazy Rain](http://www.
 but all of these songs are only playable in the game, and there are no OSTs released.
 One may try to record directly from the game, but they must press the buttons very precisely for
 the results to sound nice. Press one note offbeat, the whole recording fails.
-Even the [autoplay](http://www.youtube.com/watch?v=Krc_VDVNcUk) can get some sounds off
-(you can hear gaps between two sounds).
+Even the [autoplay](http://www.youtube.com/watch?v=Krc_VDVNcUk) can still get some sounds off
+(you can hear some gaps between two sounds).
 
 I would like to have some songs in my library, so I have to made this app to convert them.
 
-It reads in the note data from the notes files (.XNE and .XNT) and all samples (.WAV) and creates a wave file (.WAV)
+It reads in the note data from the notes files (.xne and .xnt) and all samples (.wav) and creates a wave file (.wav)
 that sounds like the in-game version, but it plays the notes very precisely to the sample.
 
 It works similarly to [BMX2WAV](http://childs.squares.net/program/bmx2wav/index.html) that converts
