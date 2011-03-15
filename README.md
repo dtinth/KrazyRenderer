@@ -33,11 +33,11 @@ a hell lot of OGG files. There is a tool to convert .OGG files to .WAV files, so
 If you have installed [vorbis-tools](http://wiki.xiph.org/Vorbis-tools), you can use `oggdec` to convert them.
 On my Mac and on Linux you could do:
 
-    for I in *.wav; do oggdec "$I"; done
+    for I in *.ogg; do oggdec "$I"; done
 
 and on Windows you would do
 
-    for %i in (*.wav) do c:\oggdec.exe "%i"
+    for %i in (*.ogg) do c:\oggdec.exe "%i"
 
 or use a GUI frontend to convert them. But you need to __convert them into 16bit PCM 44,100hz only!__
 Or KrazyRenderer won't work.
