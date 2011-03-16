@@ -565,11 +565,22 @@ void exportNotes(vector<Note> &foreground, vector<Note> &background) {
 	
 	FILE *fo = fopen(outfilename.c_str(), "w");
 	
+	fprintf(fo, "#LNTYPE 1\n\n");
+	
+	{
+		fprintf(fo, "#BPM %f\n", initialTempo);
+		for (int i = 0; i < bpmList.size(); i ++) {
+			fprintf(fo, "#BPM%02X %f\n", i + 1, bpmList[i]);
+		}
+		fprintf(fo, "\n");
+	}
+	
 	{
 		map<int16_t, Sample *>::iterator sit;
 		for (sit = keysounds.begin(); sit != keysounds.end(); sit ++) {
 			fprintf(fo, "#WAV%s %s\n", base36(sit->first).c_str(), sit->second->filename.c_str());
 		}
+		fprintf(fo, "\n");
 	}
 	
 	map<short, NotesExportMeasure *>::iterator mi;
