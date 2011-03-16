@@ -11,7 +11,10 @@
 #include <map>
 #include <set>
 
+#ifndef EXPORT_NOTES
 #define EXPORT_NOTES 0
+#endif
+
 using namespace std;
 string inputname, dirname, notename, xnename, volname, outname;
 FILE *fp;
