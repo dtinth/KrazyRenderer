@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <string.h>
+#include <limits.h>
 #include <stdio.h>
 #include <vector>
 #include <string>
