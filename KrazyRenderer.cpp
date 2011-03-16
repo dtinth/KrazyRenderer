@@ -11,6 +11,7 @@
 #include <map>
 #include <set>
 
+#define EXPORT_NOTES 0
 using namespace std;
 string inputname, dirname, notename, xnename, volname, outname;
 FILE *fp;
@@ -446,6 +447,164 @@ int eventcmp(const SoundEvent &a, const SoundEvent &b) {
 
 //-----------------------------------------------------------------
 
+typedef short NotesExportData[192];
+
+struct NotesExportChannel {
+	NotesExportData notes;
+	NotesExportChannel() {
+		for (int i = 0; i < 192; i ++) {
+			notes[i] = 0;
+		}
+	}
+};
+
+struct NotesExportMeasure {
+	map<short, NotesExportChannel *> channels;
+	NotesExportChannel *getChannel(short channel) {
+		if (channels.find(channel) == channels.end()) {
+			return (channels[channel] = new NotesExportChannel);
+		}
+		return channels[channel];
+	}
+	~NotesExportMeasure() {
+		map<short, NotesExportChannel *>::iterator it;
+		for (it = channels.begin(); it != channels.end(); it ++) {
+			delete it->second;
+		}
+	}
+};
+
+struct NotesExportFile {
+	map<short, NotesExportMeasure *> measures;
+	NotesExportMeasure *getMeasure(short measure) {
+		if (measures.find(measure) == measures.end()) {
+			return (measures[measure] = new NotesExportMeasure);
+		}
+		return measures[measure];
+	}
+	short *getNote(short channel, float time) {
+		long bmsTime = (int)(time * 192);
+		short measure = bmsTime / 192;
+		short index = bmsTime % 192;
+		return &getMeasure(measure)->getChannel(channel)->notes[index];
+	}
+	~NotesExportFile() {
+		map<short, NotesExportMeasure *>::iterator it;
+		for (it = measures.begin(); it != measures.end(); it ++) {
+			delete it->second;
+		}
+	}
+	void addNotesFromNotes(vector<Note> &, bool);
+	void addNoteFromNote(Note &, bool);
+};
+
+void NotesExportFile::addNotesFromNotes(vector<Note> &notes, bool isAuto) {
+	vector<Note>::iterator it = notes.begin();
+	for (; it != notes.end(); it ++) {
+		addNoteFromNote(*it, isAuto);
+	}
+}
+
+void NotesExportFile::addNoteFromNote(Note &note, bool isAuto) {
+	static short channelMap[8] = {16, 11, 12, 13, 14, 15, 18, 19};
+	if (isAuto) {
+		for (short channel = 101 + note.channel; channel < 132; channel ++) {
+			short *pt = getNote(channel, note.time);
+			if (*pt == 0) {
+				*pt = note.keysoundID;
+				break;
+			}
+		}
+	} else {
+		if (note.length > 1.5 / 192) {
+			*(getNote(channelMap[note.channel] + 40, note.time)) = note.keysoundID;
+			*(getNote(channelMap[note.channel] + 40, note.time + note.length)) = note.keysoundID;
+		} else {
+			*(getNote(channelMap[note.channel], note.time)) = note.keysoundID;
+		}
+	}
+}
+
+string base36(int in) {
+	static char charmap[37] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	string ret = "--";
+	ret[0] = charmap[in / 36];
+	ret[1] = charmap[in % 36];
+	return ret;
+}
+
+int gcd(int a, int b) {
+	if (a < b) {
+		return gcd(b, a);
+	}
+	if (b == 0) {
+		return a;
+	}
+	return gcd(b, a % b);
+}
+
+void exportNotes(vector<Note> &foreground, vector<Note> &background) {
+	
+	string outfilename = outname.substr(0, outname.size() - 4) + "_notes";
+	NotesExportFile out;
+	
+	map<float, float>::iterator
+		ub = tempoChanges.end(),
+		it = tempoChanges.begin();
+	
+	printf("Exporting Notes...\n");
+	
+	vector<float> bpmList;
+	for (; it != ub; it ++) {
+		bpmList.push_back(it->second);
+		*(out.getNote(8, it->first)) = bpmList.size();
+	}
+	
+	out.addNotesFromNotes(foreground, false);
+	out.addNotesFromNotes(background, true);
+	
+	FILE *fo = fopen(outfilename.c_str(), "w");
+	
+	{
+		map<int16_t, Sample *>::iterator sit;
+		for (sit = keysounds.begin(); sit != keysounds.end(); sit ++) {
+			fprintf(fo, "#WAV%s %s\n", base36(sit->first).c_str(), sit->second->filename.c_str());
+		}
+	}
+	
+	map<short, NotesExportMeasure *>::iterator mi;
+	map<short, NotesExportChannel *>::iterator ci;
+	
+	for (mi = out.measures.begin(); mi != out.measures.end(); mi ++) {
+		NotesExportMeasure *measure = mi->second;
+		for (ci = measure->channels.begin(); ci != measure->channels.end(); ci ++) {
+			NotesExportChannel *channel = ci->second;
+			NotesExportData *notes = &channel->notes;
+			fprintf(fo, "#%03d%02d:", mi->first, ci->first > 100 ? 1 : ci->first);
+			{
+				int skip = 192;
+				for (int i = 0; i < 192; i ++) {
+					if ((*notes)[i] != 0) {
+						skip = gcd(skip, i);
+					}
+				}
+				for (int i = 0; i < 192; i += skip) {
+					if (ci->first > 10) {
+						fprintf(fo, "%s", base36((*notes)[i]).c_str());
+					} else {
+						fprintf(fo, "%02X", (*notes)[i]);
+					}
+				}
+			}
+			fprintf(fo, "\n");
+		}
+		fprintf(fo, "\n");
+	}
+	
+}
+
+//-----------------------------------------------------------------
+
 int main(int argc, char *argv[]) {
 
 	if (argc < 2) {
@@ -554,6 +713,12 @@ int main(int argc, char *argv[]) {
 	vector<Note> keysoundTracks, autoKeysoundTracks;
 	readNotes(keysoundTracks);
 	readNotes(autoKeysoundTracks);
+	readKeysoundDefinition();
+	fclose(fp);
+	
+#if EXPORT_NOTES
+	exportNotes(keysoundTracks, autoKeysoundTracks);
+#endif	
 	
 	int minMeasure = INT_MAX;
 	updateMinMeasureFromNotes(keysoundTracks,     minMeasure);
@@ -563,10 +728,8 @@ int main(int argc, char *argv[]) {
 	addEventsFromNotes(keysoundTracks,     shift);
 	addEventsFromNotes(autoKeysoundTracks, shift);
 	sort(soundEvents.begin(), soundEvents.end(), eventcmp);
-	readKeysoundDefinition();
-	fclose(fp);
 	
 	writeSound(volumeMap);
-	
+
 }
 
