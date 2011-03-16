@@ -137,16 +137,16 @@ bool Sample::loadFromWavFile(FILE *fs, string &error) {
 }
 
 void Sample::load() {
-	filename = filename.substr(0, filename.size() - 3) + "wav";
-	FILE *fs = fopen((dirname + filename).c_str(), "rb");
-	printf("Loading %s...\n", filename.c_str());
+	string wavFilename = filename.substr(0, filename.size() - 3) + "wav";
+	FILE *fs = fopen((dirname + wavFilename).c_str(), "rb");
+	printf("Loading %s...\n", wavFilename.c_str());
 	if (fs == NULL) {
-		printf("!!! %s can't be opened.\n", filename.c_str());
+		printf("!!! %s can't be opened.\n", wavFilename.c_str());
 		return;
 	}
 	string error;
 	if (!loadFromWavFile(fs, error)) {
-		printf("!!! %s can't be loaded: %s.\n", filename.c_str(), error.c_str());
+		printf("!!! %s can't be loaded: %s.\n", wavFilename.c_str(), error.c_str());
 	}
 	fclose(fs);
 }
